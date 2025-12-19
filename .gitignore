@@ -1,0 +1,9 @@
+__pycache__/
+.env
+.venv/
+saved_model/*
+!saved_model/.gitkeep
+dataset/*
+!dataset/.gitkeep
+*.pyc
+.DS_Store
