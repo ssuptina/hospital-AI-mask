@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hospital AI Mask Compliance System</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <div class="nav-logo" style="background: transparent; padding: 0;">
+        <img src="{{ url_for('static', filename='images/masked.png') }}" alt="MaskGuard Icon" style="width: 36px; height: 36px;">
+      </div>
+      <div class="nav-titles">
+        <h1 class="nav-title">Hospital AI Mask Compliance System</h1>
+        <span class="nav-subtitle">Real-Time Infection Prevention Monitoring</span>
+      </div>
+    </div>
+    
+    <div class="nav-right">
+      <div class="nav-status" id="modelStatusBadge">
+        <div class="status-dot {% if not model_loaded %}offline{% endif %}" id="statusDot"></div>
+        <span id="modelStatusText">{% if model_loaded %}Ready - Monitoring{% else %}Offline - Model Loading{% endif %}</span>
+      </div>
+      
+      <div class="nav-time" id="liveClock">00:00:00 PM</div>
+      
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <i data-lucide="moon"></i>
+      </button>
+      
+      <div class="nav-profile">
+        <div class="nav-time" style="font-weight: 500;">St. Mercy Medical Center</div>
+        <div class="avatar">
+          <i data-lucide="user"></i>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+      
+      <!-- Webcam Section -->
+      <section class="card">
+        <div class="card-header" style="margin-bottom: 16px;">
+          <h2 class="card-title">
+            <i data-lucide="camera"></i> LIVE CAMERA
+          </h2>
+          <div class="badge badge-success" id="cameraStatusBadge">
+            <i data-lucide="check-circle" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+            Camera 01 Ready
+          </div>
+        </div>
+        
+        <div class="webcam-container">
+          <div class="webcam-idle" id="idleOverlay">
+            <i data-lucide="video" style="width: 48px; height: 48px; stroke-width: 1.5;"></i>
+            <h3>Camera Offline</h3>
+            <span style="font-size: 14px; margin-top: 8px;">Click "Start Monitoring" to connect</span>
+          </div>
+          
+          <video id="webcam" class="webcam-video" autoplay muted playsinline style="display: none;"></video>
+          <canvas id="overlayCanvas" class="webcam-overlay" style="display: none;"></canvas>
+          <canvas id="captureCanvas" class="visually-hidden"></canvas>
+          
+          <div class="scan-line" id="scanline"></div>
+          
+          <!-- HUD -->
+          <div class="hud" id="cameraHud">
+            <div class="hud-panel">
+              <div class="hud-item"><i data-lucide="activity" style="width: 16px; height: 16px;"></i> FPS: <span class="hud-val" id="fpsVal">--</span></div>
+              <div class="hud-item"><i data-lucide="users" style="width: 16px; height: 16px;"></i> Faces: <span class="hud-val" id="hudFaces">0</span></div>
+            </div>
+            <div class="hud-panel">
+              <div class="hud-item"><i data-lucide="shield" style="width: 16px; height: 16px;"></i> Compliance: <span class="hud-val" id="hudCompliance" style="color: var(--success);">--%</span></div>
+              <div class="hud-item"><i data-lucide="map-pin" style="width: 16px; height: 16px;"></i> Ward: <span class="hud-val" style="color: var(--text-main);">ER Entrance</span></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="controls">
+          <button class="btn btn-primary" id="startWebcam">
+            <i data-lucide="play"></i> Start Monitoring
+          </button>
+          <button class="btn btn-danger" id="stopWebcam" disabled>
+            <i data-lucide="square"></i> Stop
+          </button>
+          <button class="btn btn-outline" id="realtimeBtn" disabled>
+            <i data-lucide="refresh-cw"></i> <span id="realtimeBtnText">Enable Realtime</span>
+          </button>
+          <button class="btn btn-outline" id="oneshotBtn" disabled title="Shortcut: Spacebar">
+            <i data-lucide="camera"></i> Screenshot
+          </button>
+        </div>
+      </section>
+
+      <!-- History Table -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <i data-lucide="history"></i> Detection History
+          </h2>
+          <div style="display: flex; gap: 12px;">
+            <button class="btn btn-outline" style="padding: 8px 16px; font-size: 13px;" id="downloadCsvBtn">
+              <i data-lucide="download" style="width: 16px; height: 16px;"></i> Export CSV
+            </button>
+            <button class="btn btn-outline" style="padding: 8px 16px; font-size: 13px;" id="clearHistoryBtn">
+              <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Clear Logs
+            </button>
+          </div>
+        </div>
+        
+        <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Camera</th>
+                <th>Status</th>
+                <th>Confidence</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+                  <i data-lucide="inbox" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5;"></i><br>
+                  No detections logged yet
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+      
+      <!-- Stats -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <i data-lucide="pie-chart"></i> Session Info
+          </h2>
+        </div>
+        
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
+              Correct Mask
+            </div>
+            <div class="stat-value success" id="statCorrect">0</div>
+          </div>
+          
+          <div class="stat-box">
+            <div class="stat-label">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--warning);"></div>
+              Incorrect
+            </div>
+            <div class="stat-value warning" id="statIncorrect">0</div>
+          </div>
+          
+          <div class="stat-box">
+            <div class="stat-label">
+              <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--danger);"></div>
+              No Mask
+            </div>
+            <div class="stat-value danger" id="statNone">0</div>
+          </div>
+          
+          <div class="stat-box">
+            <div class="stat-label">
+              <i data-lucide="activity" style="width: 14px; height: 14px; color: var(--primary);"></i>
+              Compliance
+            </div>
+            <div class="stat-value" style="color: var(--primary);" id="statCompliance">--%</div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- System Health -->
+      <section class="card">
+        <div class="card-header" style="margin-bottom: 16px;">
+          <h2 class="card-title">
+            <i data-lucide="server"></i> System Health
+          </h2>
+        </div>
+        <div class="health-monitors">
+          <div class="health-item">
+            <span class="health-label"><i data-lucide="cpu" style="width:14px; height:14px; display:inline-block; vertical-align:text-bottom; margin-right:4px;"></i> CPU Load</span>
+            <span class="health-value">Stable</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label"><i data-lucide="hard-drive" style="width:14px; height:14px; display:inline-block; vertical-align:text-bottom; margin-right:4px;"></i> Memory</span>
+            <span class="health-value">Nominal</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label"><i data-lucide="brain" style="width:14px; height:14px; display:inline-block; vertical-align:text-bottom; margin-right:4px;"></i> Model Version</span>
+            <span class="health-value">MobileNetV2</span>
+          </div>
+          <div class="health-item">
+            <span class="health-label"><i data-lucide="settings" style="width:14px; height:14px; display:inline-block; vertical-align:text-bottom; margin-right:4px;"></i> Threshold</span>
+            <span class="health-value">90%</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upload Image -->
+      <section class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <i data-lucide="image"></i> Static Analysis
+          </h2>
+        </div>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+          <label class="upload-area" id="dropzone" for="imageFile">
+            <div class="upload-icon">
+              <i data-lucide="upload-cloud"></i>
+            </div>
+            <span class="upload-text">Drag & drop an image or click to browse</span>
+            <span class="upload-hint">JPG, PNG, GIF up to 16MB</span>
+            <input type="file" id="imageFile" class="file-input" accept="image/*">
+          </label>
+          
+          <div class="preview-container" id="previewContainer">
+            <img id="previewImg" class="preview-img" alt="Preview">
+            <div style="padding: 12px; font-size: 13px; color: var(--text-muted); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+              <span id="previewMeta">filename.jpg</span>
+              <button type="button" id="clearPreviewBtn" style="background:none; border:none; color:var(--danger); cursor:pointer; font-weight:500;">Remove</button>
+            </div>
+          </div>
+          
+          <div class="upload-result" id="uploadResult"></div>
+          
+          <button type="submit" class="btn btn-primary" id="analyzeBtn" style="width: 100%; margin-top: 16px;" {{ 'disabled' if not model_loaded else '' }}>
+            <i data-lucide="search"></i> {% if model_loaded %}Analyze Image{% else %}Model Offline{% endif %}
+          </button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- JavaScript -->
+  <script>
+    // Initialize Icons
+    lucide.createIcons();
+
+    const $ = s => document.querySelector(s);
+    const MODEL_LOADED = {{ 'true' if model_loaded else 'false' }};
+
+    // ── Theme Management ──
+    const themeToggle = $('#themeToggle');
+    let isDark = localStorage.getItem('hospitalTheme') === 'dark';
+    
+    function setTheme(dark) {
+      isDark = dark;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      localStorage.setItem('hospitalTheme', dark ? 'dark' : 'light');
+      themeToggle.innerHTML = dark ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
+      lucide.createIcons();
+    }
+    
+    setTheme(isDark);
+    themeToggle.addEventListener('click', () => setTheme(!isDark));
+
+    // ── Utilities ──
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      
+      let icon = 'info';
+      if(type === 'success') icon = 'check-circle';
+      if(type === 'error') icon = 'alert-circle';
+      if(type === 'warning') icon = 'alert-triangle';
+      
+      el.innerHTML = `<i data-lucide="${icon}"></i> <span>${msg}</span>`;
+      $('#toastContainer').appendChild(el);
+      lucide.createIcons();
+      
+      setTimeout(() => {
+        el.style.animation = 'fadeOut 0.3s forwards';
+        setTimeout(() => el.remove(), 300);
+      }, 4000);
+    }
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      $('#liveClock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── State ──
+    let stream = null, realtime = false, realtimeTimer = null;
+    let frameCount = 0, lastFpsTime = performance.now(), fps = 0;
+    let historyData = [];
+    const stats = { correct: 0, incorrect: 0, none: 0, total: 0 };
+
+    // ── Stats & History ──
+    function updateStats(label) {
+      stats.total++;
+      if (label === 'Mask Correct') stats.correct++;
+      else if (label === 'Mask Incorrect') stats.incorrect++;
+      else stats.none++;
+      
+      const rate = stats.total ? Math.round((stats.correct / stats.total) * 100) : 0;
+      
+      $('#statCorrect').textContent = stats.correct;
+      $('#statIncorrect').textContent = stats.incorrect;
+      $('#statNone').textContent = stats.none;
+      $('#statCompliance').textContent = `${rate}%`;
+      $('#hudCompliance').textContent = `${rate}%`;
+      
+      let rateColor = 'var(--success)';
+      if(rate < 70) rateColor = 'var(--warning)';
+      if(rate < 40) rateColor = 'var(--danger)';
+      $('#hudCompliance').style.color = rateColor;
+      $('#statCompliance').style.color = rateColor;
+    }
+
+    function getBadgeHtml(label) {
+      if (label === 'Mask Correct') return `<span class="badge badge-success"><i data-lucide="check" style="width:12px;height:12px;margin-right:4px;"></i> Correct</span>`;
+      if (label === 'Mask Incorrect') return `<span class="badge badge-warning"><i data-lucide="alert-triangle" style="width:12px;height:12px;margin-right:4px;"></i> Incorrect</span>`;
+      return `<span class="badge badge-danger"><i data-lucide="x" style="width:12px;height:12px;margin-right:4px;"></i> No Mask</span>`;
+    }
+
+    function pushHistory(type, label, conf, msg) {
+      const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+      historyData.unshift({ time, type, label, conf, msg });
+      if (historyData.length > 50) historyData.pop();
+      renderHistory();
+      updateStats(label);
+    }
+
+    function renderHistory() {
+      const tbody = $('#historyBody');
+      if (!historyData.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);"><i data-lucide="inbox" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5;"></i><br>No detections logged yet</td></tr>`;
+        lucide.createIcons();
+        return;
+      }
+      
+      tbody.innerHTML = historyData.map(r => `
+        <tr>
+          <td style="font-weight: 500;">${r.time}</td>
+          <td style="color: var(--text-muted);">Cam 01 (${r.type})</td>
+          <td>${getBadgeHtml(r.label)}</td>
+          <td style="font-weight: 600;">${r.conf}%</td>
+          <td style="color: var(--text-muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.msg}">${r.msg || '-'}</td>
+        </tr>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    $('#clearHistoryBtn').addEventListener('click', () => { 
+      historyData = []; 
+      renderHistory(); 
+      toast('Detection logs cleared.', 'success');
+    });
+    
+    $('#downloadCsvBtn').addEventListener('click', () => {
+      if (!historyData.length) { toast('No data to export.', 'warning'); return; }
+      const csv = ['Time,Camera_Type,Status,Confidence,Message', 
+        ...historyData.map(r => `${r.time},Cam 01 (${r.type}),${r.label},${r.conf},"${r.msg}"`)].join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = `compliance_report_${Date.now()}.csv`;
+      a.click();
+      toast('Report downloaded successfully.', 'success');
+    });
+
+    // ── Camera Overlay ──
+    function drawOverlay(label, conf) {
+       // Currently handled by sending bounding boxes back if needed.
+       // The requested UI emphasizes enterprise clean look. Bounding box drawing can be added via canvas.
+    }
+
+    // ── Webcam Logic ──
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+        const vid = $('#webcam');
+        vid.srcObject = stream;
+        await vid.play();
+        
+        vid.style.display = 'block';
+        $('#overlayCanvas').style.display = 'block';
+        $('#idleOverlay').style.display = 'none';
+        $('#scanline').style.display = 'block';
+        $('#cameraHud').style.display = 'flex';
+        
+        $('#startWebcam').disabled = true;
+        $('#stopWebcam').disabled = false;
+        $('#oneshotBtn').disabled = false;
+        $('#realtimeBtn').disabled = false;
+        
+        $('#cameraStatusBadge').className = 'badge badge-success';
+        $('#cameraStatusBadge').innerHTML = '<i data-lucide="check-circle" style="width: 14px; height: 14px; margin-right: 4px;"></i> Camera 01 Active';
+        lucide.createIcons();
+        
+        animFps();
+        toast('Camera connection established.', 'success');
+        
+        // Auto-start realtime monitoring when camera starts
+        startRealtime();
+      } catch (err) {
+        toast('Failed to access camera hardware.', 'error');
+        console.error(err);
+      }
+    }
+
+    function stopCamera() {
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      stopRealtime();
+      
+      $('#webcam').style.display = 'none';
+      $('#overlayCanvas').style.display = 'none';
+      $('#idleOverlay').style.display = 'flex';
+      $('#scanline').style.display = 'none';
+      $('#cameraHud').style.display = 'none';
+      
+      $('#startWebcam').disabled = false;
+      $('#stopWebcam').disabled = true;
+      $('#oneshotBtn').disabled = true;
+      $('#realtimeBtn').disabled = true;
+      $('#fpsVal').textContent = '--';
+      
+      $('#cameraStatusBadge').className = 'badge badge-warning';
+      $('#cameraStatusBadge').innerHTML = '<i data-lucide="alert-circle" style="width: 14px; height: 14px; margin-right: 4px;"></i> Camera Offline';
+      lucide.createIcons();
+      
+      toast('Camera disconnected.', 'info');
+    }
+
+    $('#startWebcam').addEventListener('click', startCamera);
+    $('#stopWebcam').addEventListener('click', stopCamera);
+
+    function animFps() {
+      if (!stream) return;
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
+        $('#fpsVal').textContent = fps;
+        frameCount = 0; lastFpsTime = now;
+      }
+      requestAnimationFrame(animFps);
+    }
+
+    // ── Global Stats ──
+    let sessionStats = { correct: 0, incorrect: 0, none: 0 };
+    
+    function updateStatsUI() {
+      $('#statCorrect').textContent = sessionStats.correct;
+      $('#statIncorrect').textContent = sessionStats.incorrect;
+      $('#statNone').textContent = sessionStats.none;
+      
+      const total = sessionStats.correct + sessionStats.incorrect + sessionStats.none;
+      let comp = '--%';
+      if(total > 0) {
+        comp = Math.round((sessionStats.correct / total) * 100) + '%';
+      }
+      $('#statCompliance').textContent = comp;
+      $('#hudCompliance').textContent = comp;
+    }
+
+    // ── Prediction ──
+    async function captureAndPredict(type = 'Manual') {
+      const vid = $('#webcam');
+      if (!vid.videoWidth) { toast('Camera feed not ready.', 'error'); return; }
+      
+      const c = $('#captureCanvas');
+      c.width = vid.videoWidth;
+      c.height = vid.videoHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(vid, 0, 0);
+      
+      const dataUrl = c.toDataURL('image/jpeg', 0.8);
+      
+      if (!MODEL_LOADED) { toast('AI Model is currently offline.', 'error'); return; }
+      
+      try {
+        const response = await fetch('/webcam_detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl })
+        });
+        const data = await response.json();
+        
+        if (!data.success) {
+          if(type === 'Manual') toast(data.error || 'Detection failed.', 'error');
+          return;
+        }
+        
+        const detections = data.detections || [];
+        $('#hudFaces').textContent = data.faces_detected || 0;
+        
+        // ── Draw Visual Alerts on Overlay ──
+        const overlay = $('#overlayCanvas');
+        overlay.width = vid.videoWidth;
+        overlay.height = vid.videoHeight;
+        const oCtx = overlay.getContext('2d');
+        oCtx.clearRect(0, 0, overlay.width, overlay.height);
+        
+        if (detections.length === 0) {
+          if(type === 'Manual') toast('No faces detected in frame.', 'info');
+          return;
+        }
+        
+        detections.forEach(det => {
+          const label = det.label || 'Unknown';
+          const conf = Math.round(det.confidence || 0);
+          
+          if (det.class_id === 0) sessionStats.correct++;
+          else if (det.class_id === 1) sessionStats.incorrect++;
+          else if (det.class_id === 2) sessionStats.none++;
+          
+          // Draw Box
+          let color = '#2A9D8F'; // success
+          if (det.class_id === 1) color = '#E9C46A'; // warning
+          else if (det.class_id === 2) color = '#C1121F'; // danger
+          
+          if (det.box) {
+             const {x1, y1, x2, y2} = det.box;
+             oCtx.strokeStyle = color;
+             oCtx.lineWidth = 4;
+             oCtx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+             
+             // Draw label background
+             oCtx.fillStyle = color;
+             oCtx.fillRect(x1, y1 - 25, x2 - x1, 25);
+             
+             // Draw label text (unflip context temporarily for text so it doesn't render backwards)
+             oCtx.save();
+             oCtx.translate(x1 + (x2 - x1)/2, y1 - 12);
+             oCtx.scale(-1, 1); // unflip
+             oCtx.fillStyle = '#FFFFFF';
+             oCtx.font = 'bold 14px Inter, sans-serif';
+             oCtx.textAlign = 'center';
+             oCtx.textBaseline = 'middle';
+             oCtx.fillText(label + ' ' + conf + '%', 0, 0);
+             oCtx.restore();
+          }
+          
+          pushHistory(type, label, conf, `Face detected at ${new Date().toLocaleTimeString()}`);
+        });
+        
+        updateStatsUI();
+        
+      } catch (e) {
+        // Silent fail for realtime to not spam toasts, manual gets toast
+        if(type === 'Manual') toast('Processing error occurred.', 'error');
+      }
+    }
+
+    $('#oneshotBtn').addEventListener('click', async () => {
+      await captureAndPredict('Manual');
+      const vid = $('#webcam');
+      if (!vid.videoWidth) return;
+      const c = document.createElement('canvas');
+      c.width = vid.videoWidth;
+      c.height = vid.videoHeight;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(vid, 0, 0, c.width, c.height);
+      ctx.drawImage($('#overlayCanvas'), 0, 0, c.width, c.height);
+      const a = document.createElement('a');
+      a.href = c.toDataURL('image/jpeg', 0.9);
+      a.download = `screenshot_${new Date().getTime()}.jpg`;
+      a.click();
+      toast('Screenshot saved to your device.', 'success');
+    });
+
+    function startRealtime() {
+      realtime = true;
+      $('#realtimeBtnText').textContent = 'Disable Realtime';
+      $('#realtimeBtn').classList.add('btn-primary');
+      $('#realtimeBtn').classList.remove('btn-outline');
+      toast('Real-time monitoring initiated.', 'info');
+      realtimeTimer = setInterval(() => captureAndPredict('Auto'), 1000);
+    }
+
+    function stopRealtime() {
+      if (!realtime) return;
+      realtime = false;
+      $('#realtimeBtnText').textContent = 'Enable Realtime';
+      $('#realtimeBtn').classList.remove('btn-primary');
+      $('#realtimeBtn').classList.add('btn-outline');
+      clearInterval(realtimeTimer);
+      realtimeTimer = null;
+      toast('Real-time monitoring paused.', 'info');
+    }
+
+    $('#realtimeBtn').addEventListener('click', () => realtime ? stopRealtime() : startRealtime());
+
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        if(!$('#oneshotBtn').disabled) $('#oneshotBtn').click();
+      }
+    });
+
+    // ── Static Image Upload ──
+    const dropzone = $('#dropzone');
+    const fileInput = $('#imageFile');
+    const previewContainer = $('#previewContainer');
+    const previewImg = $('#previewImg');
+    const uploadForm = $('#uploadForm');
+    
+    function handleFile(file) {
+      if(file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          previewImg.src = e.target.result;
+          $('#previewMeta').textContent = `${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+          dropzone.style.display = 'none';
+          previewContainer.style.display = 'block';
+          $('#uploadResult').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        toast('Invalid file format. Please upload an image.', 'error');
+      }
+    }
+
+    fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+    
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('drag-active');
+    });
+    
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-active'));
+    
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('drag-active');
+      if(e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    $('#clearPreviewBtn').addEventListener('click', () => {
+      fileInput.value = '';
+      previewContainer.style.display = 'none';
+      dropzone.style.display = 'flex';
+      $('#uploadResult').style.display = 'none';
+    });
+    
+    $('#clearHistoryBtn').addEventListener('click', () => {
+      $('#historyBody').innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 32px; color: var(--text-muted);">
+            <i data-lucide="inbox" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5;"></i><br>
+            No detections logged yet
+          </td>
+        </tr>
+      `;
+      lucide.createIcons();
+      sessionStats = { correct: 0, incorrect: 0, none: 0 };
+      updateStatsUI();
+      $('#hudFaces').textContent = '0';
+      toast('Detection history cleared.', 'success');
+    });
+
+    uploadForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!fileInput.files[0]) { toast('Please provide an image.', 'warning'); return; }
+      if (!MODEL_LOADED) { toast('AI Engine is offline.', 'error'); return; }
+
+      const btn = $('#analyzeBtn');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="spin"></i> Analyzing...`;
+      lucide.createIcons();
+
+      const fd = new FormData();
+      fd.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/detect', { method: 'POST', body: fd });
+        const data = await response.json();
+        
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        lucide.createIcons();
+
+        if (!data.success) {
+          toast(data.error || 'Analysis failed.', 'error');
+          return;
+        }
+
+        const results = data.results || [];
+        const resultContainer = $('#uploadResult');
+        resultContainer.style.display = 'block';
+
+        if (!results.length) {
+          resultContainer.innerHTML = `<strong>Scan Complete:</strong> No subjects detected in the field of view.`;
+          toast('No faces detected.', 'info');
+          return;
+        }
+
+        resultContainer.innerHTML = results.map(d => `
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${getBadgeHtml(d.label)}
+            </div>
+            <div style="font-weight:600; color:var(--text-main); font-size:13px;">${d.confidence}% Confidence</div>
+          </div>
+        `).join('');
+        lucide.createIcons();
+
+        results.forEach(d => pushHistory('Static', d.label, d.confidence, 'Uploaded Image'));
+        toast(`Analysis complete. ${results.length} subject(s) processed.`, 'success');
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        lucide.createIcons();
+        toast('Network error during analysis.', 'error');
+      }
+    });
+
+    // Spin animation class for loader
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .spin { animation: spin 1s linear infinite; }
+      @keyframes spin { 100% { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
+
+  </script>
+</body>
+</html>
