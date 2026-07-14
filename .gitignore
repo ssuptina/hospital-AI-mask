@@ -1,36 +1,32 @@
-<<<<<<< HEAD
 # Virtual Environments
 venv/
 mask_venv/
 env/
 .env
+.venv/
 
 # Python Cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Logs
 logs/
 *.log
 
 # Models and Large Files (optional but recommended for git)
-# dataset/
+dataset/*
+!dataset/.gitkeep
+saved_model/*
+!saved_model/.gitkeep
 # src/best_model.h5
 # advanced_face_detector/*.caffemodel
+
+# OS Files
+.DS_Store
 
 # IDEs and Editors
 .vscode/
 .idea/
 .opencode/
-=======
-__pycache__/
-.env
-.venv/
-saved_model/*
-!saved_model/.gitkeep
-dataset/*
-!dataset/.gitkeep
-*.pyc
-.DS_Store
->>>>>>> 777bf114792935706a7be8159fbdd100724ee755
