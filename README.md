@@ -1,101 +1,246 @@
-# Hospital AI Mask Compliance System
+# 🏥 Hospital AI Mask Compliance System
 
 <p align="center">
-  <img src="images/masked.png" alt="MaskGuard Logo" width="100"/>
+  <img src="images/masked.png" alt="Hospital AI Mask Compliance System" width="120"/>
 </p>
 
-An advanced, real-time computer vision system built for monitoring mask compliance in critical healthcare environments (e.g., ICU, ER, operation theaters). Leveraging a lightweight MobileNetV2 architecture and OpenCV, it provides high-accuracy, 3-class face mask detection (Correct, Incorrect, No Mask).
+<p align="center">
+An AI-powered web application for real-time face mask compliance monitoring in healthcare environments using <strong>Computer Vision</strong>, <strong>Deep Learning</strong>, and <strong>Flask</strong>.
+</p>
 
-![Working Interface](images/working%20image.jpeg)
+<p align="center">
 
-## Features
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange)
+![OpenCV](https://img.shields.io/badge/OpenCV-4.x-green)
+![Flask](https://img.shields.io/badge/Flask-Web%20Framework-black)
+![License](https://img.shields.io/badge/License-MIT-success)
 
-- **Real-Time Detection**: Processes live webcam feeds to instantly detect faces and analyze mask-wearing compliance.
-- **Three-Class Categorization**: Differentiates between:
-  - 🟢 **Correct Mask** (mask covering nose and mouth)
-  - 🟡 **Incorrect Mask** (mask under nose or chin)
-  - 🔴 **No Mask** (no face covering)
-- **High Accuracy & Speed**: Built on top of MobileNetV2 for the classifier and an SSD-based Caffe model for rapid face localization.
-- **Interactive Web UI**: A professional dashboard built with HTML, CSS, and vanilla JS. It features live statistics, detection history, and manual image uploads.
-- **Screenshot & Export**: Allows taking snapshots of the live camera feed with drawn bounding boxes and downloading them instantly.
-- **Automated Logging**: Keeps a persistent CSV log of all non-compliance events for auditing and compliance tracking.
+</p>
 
-![Features Overview](images/feature%202.jpeg)
-![Logging Example](images/logs.jpeg)
+---
 
-## Technology Stack
+## 📸 Preview
 
-- **Backend / API**: Python 3, Flask, Flask-CORS, Flask-Limiter
-- **Deep Learning Model**: TensorFlow / Keras (MobileNetV2 fine-tuned)
-- **Computer Vision**: OpenCV (dnn module for face detection)
-- **Frontend**: Vanilla HTML5, CSS3, JavaScript (with Lucide icons)
+![Dashboard](images/working%20image.jpeg)
 
-## Research Basis
+---
 
-| **Feature in Code** | **Paper(s) / Dataset(s)** | **Year** | **Why Included (Benefit)** | **Drawback Avoided** |
-|---------------------|---------------------------|----------|----------------------------|----------------------|
-| **Transfer Learning with MobileNetV2** | *Kaggle Mask Detection Baseline*, *MaskedFace-Net original paper*, ViDMASK real-time study | 2020–2024 | Lightweight, fast, accurate with small datasets | Heavy architectures (VGG16, ResNet101) are too slow for real-time |
-| **Data Augmentation (rotation, zoom, flip, brightness)** | ViDMASK Dataset Study, Mendeley Mask Dataset Paper | 2023–2024 | Improves generalization, handles lighting & angle variations | Overfitting on small datasets |
-| **Multi-class Support (With Mask / Without Mask / Incorrect Mask)** | *MaskedFace-Net Extended* (3-class), *BAFMD Bias-Aware Face Mask Detection* | 2023 | Detects improper mask usage for better public safety | 2-class models miss partial violations |
-| **Grad-CAM Visualization (`gradcam.py`)** | BAFMD Explainability Section, Fair AI in Mask Detection studies | 2023–2024 | Shows *where* the model looks, improves transparency | Black-box predictions with no interpretability |
-| **Real-time Detection (OpenCV + Webcam)** | ViDMASK Real-time Deployment Study | 2024 | Enables immediate deployment on laptop webcams or CCTV | Offline-only or slow detection systems |
-| **Web-based Interface (Flask + Upload/Webcam)** | Real-time Mask Detection Deployment Papers, Edge AI Deployment Reports | 2023–2024 | Interactive, easy-to-use interface for non-technical users | CLI-only tools are not user-friendly |
+# 📖 Overview
 
+The **Hospital AI Mask Compliance System** is a real-time computer vision application designed to monitor mask usage in healthcare facilities such as hospitals, clinics, laboratories, and other high-risk environments.
 
-## Project Structure
+The system detects faces from live webcam feeds or uploaded images and classifies mask usage into three categories:
+
+- ✅ Correct Mask
+- ⚠️ Incorrect Mask
+- ❌ No Mask
+
+The application combines **MobileNetV2**, **OpenCV**, and **Flask** to provide an efficient and lightweight solution for mask compliance monitoring through an interactive web dashboard.
+
+---
+
+# ✨ Features
+
+- 🎥 Real-time webcam mask detection
+- 🖼️ Image upload and analysis
+- 🧠 MobileNetV2-based mask classifier
+- 👤 OpenCV DNN face detection
+- 📊 Live detection statistics
+- 📋 Compliance logging
+- 📸 Screenshot capture
+- 📄 CSV report export
+- 🌐 Responsive web dashboard
+- ⚡ Lightweight and fast inference
+
+---
+
+# 🛠 Technology Stack
+
+| Category | Technologies |
+|----------|--------------|
+| Backend | Python, Flask, Flask-CORS |
+| Deep Learning | TensorFlow, Keras, MobileNetV2 |
+| Computer Vision | OpenCV DNN |
+| Frontend | HTML5, CSS3, JavaScript |
+| Icons | Lucide Icons |
+| Data | CSV Logging |
+
+---
+
+# 🧠 Detection Categories
+
+| Status | Description |
+|---------|-------------|
+| ✅ Correct Mask | Mask properly covers nose and mouth |
+| ⚠️ Incorrect Mask | Mask worn incorrectly |
+| ❌ No Mask | No face covering detected |
+
+---
+
+# 📁 Project Structure
 
 ```text
 mask_detection/
-├── advanced_face_detector/     # Caffe face detection models (.prototxt and .caffemodel)
-├── dataset/                    # Training images separated by class
-├── images/                     # Readme and presentation images
-├── logs/                       # Auto-generated CSV logs of detections
-├── src/                        # Core ML code and models
-│   ├── best_model.h5           # The trained Keras 3-class classification model
-│   ├── train_mask_classifier.py# Script used to train the model
-│   └── config.py               # Centralized configuration variables
-├── web_app/                    # Web Application Server (Flask API + HTML/CSS/JS)
-│   ├── app_enhanced.py         # Main Flask server
-│   ├── static/                 # CSS styles and uploaded images
-│   └── templates/              # HTML frontend files
-├── setup_and_train_enhanced.bat# Utility script to set up environment and run training
-├── requirements_enhanced.txt   # Python dependencies
-└── README.md                   # This file
+│
+├── advanced_face_detector/
+├── dataset/
+├── images/
+├── logs/
+├── src/
+│   ├── best_model.h5
+│   ├── train_mask_classifier.py
+│   └── config.py
+│
+├── web_app/
+│   ├── app_enhanced.py
+│   ├── static/
+│   └── templates/
+│
+├── requirements_enhanced.txt
+├── setup_and_train_enhanced.bat
+└── README.md
 ```
 
-## Setup & Installation
+---
 
-1. **Clone the repository** and navigate to the project root.
-2. **Set up the Virtual Environment**:
-   ```powershell
-   python -m venv mask_venv
-   .\mask_venv\Scripts\Activate.ps1
-   ```
-3. **Install Dependencies**:
-   ```powershell
-   pip install -r requirements_enhanced.txt
-   ```
-4. **Ensure Models are Present**:
-   - Make sure `advanced_face_detector/res10_300x300_ssd_iter_140000.caffemodel` and `deploy.prototxt` exist.
-   - Make sure `src/best_model.h5` exists. (If you want to train it from scratch, you can run `setup_and_train_enhanced.bat`).
+# 🚀 Installation
 
-## Running the Application
+### Clone the repository
 
-1. Activate your virtual environment: `.\mask_venv\Scripts\Activate.ps1`
-2. Change directory to the web app: `cd web_app`
-3. Run the Flask server:
-   ```powershell
-   python app_enhanced.py
-   ```
-4. Open your web browser and navigate to: `http://localhost:5000`
+```bash
+git clone <repository-url>
+cd mask_detection
+```
 
-## Using the Dashboard
+### Create a virtual environment
 
-- **Start Monitoring**: Click the "Start Monitoring" button to turn on your webcam. Ensure your browser has permission to access the camera.
-- **Enable Realtime**: Click this to automatically scan the camera feed continuously and update the HUD stats.
-- **Screenshot**: Press the "Screenshot" button (or the Spacebar on your keyboard) to capture a manual frame, analyze it, and download the annotated image to your PC.
-- **Export CSV**: Download a summary report of all detected faces and their compliance status during the session.
-- **Static Analysis**: Drag and drop an image into the upload box on the right side to analyze pre-existing photos.
+**Windows**
 
-## Authors & Acknowledgments
-Built for rigorous infection prevention protocols. This project demonstrates end-to-end integration of deep learning models into a user-friendly, responsive web dashboard.
+```bash
+python -m venv mask_venv
+mask_venv\Scripts\activate
+```
+
+**Linux / macOS**
+
+```bash
+python3 -m venv mask_venv
+source mask_venv/bin/activate
+```
+
+### Install dependencies
+
+```bash
+pip install -r requirements_enhanced.txt
+```
+
+---
+
+# ▶️ Run the Application
+
+Navigate to the web application.
+
+```bash
+cd web_app
+```
+
+Start the Flask server.
+
+```bash
+python app_enhanced.py
+```
+
+Open your browser and visit:
+
+```
+http://localhost:5000
+```
+
+---
+
+# 💻 Usage
+
+### Live Monitoring
+
+- Start webcam detection
+- Monitor mask compliance in real time
+- View live statistics
+- Capture screenshots
+
+### Image Analysis
+
+- Upload an image
+- Analyze mask compliance
+- View prediction results
+
+### Reports
+
+- Export compliance reports
+- Download CSV logs
+- Review detection history
+
+---
+
+# 📷 Screenshots
+
+### Dashboard
+
+![Dashboard](images/working%20image.jpeg)
+
+### Features
+
+![Features](images/feature%202.jpeg)
+
+### Compliance Logs
+
+![Logs](images/logs.jpeg)
+
+---
+
+# 📚 Research Foundation
+
+This project is based on recent research in real-time face mask detection and transfer learning.
+
+Key concepts include:
+
+- MobileNetV2 Transfer Learning
+- OpenCV DNN Face Detection
+- Multi-class Mask Classification
+- Data Augmentation
+- Grad-CAM Explainability
+- Real-time Deployment
+
+---
+
+# 🔮 Future Improvements
+
+- Multi-camera support
+- CCTV integration
+- Face recognition
+- Alert notifications
+- Database storage
+- Admin dashboard
+- Docker deployment
+- Cloud deployment
+- REST API authentication
+
+---
+
+# 👨‍💻 Author
+
+**Teena Neupane**
+
+Computer Science Engineer and Data Analyst
+
+---
+
+# 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+## ⭐ Support
+
+If you found this project helpful, consider giving it a **⭐ Star** on GitHub.
