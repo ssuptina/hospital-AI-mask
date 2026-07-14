@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Virtual Environments
 venv/
 mask_venv/
@@ -22,3 +23,14 @@ logs/
 .vscode/
 .idea/
 .opencode/
+=======
+__pycache__/
+.env
+.venv/
+saved_model/*
+!saved_model/.gitkeep
+dataset/*
+!dataset/.gitkeep
+*.pyc
+.DS_Store
+>>>>>>> 777bf114792935706a7be8159fbdd100724ee755
